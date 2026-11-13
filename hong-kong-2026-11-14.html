@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>香港一日游｜真实地图路线</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--ink:#172b3a;--muted:#627482;--line:#dce4e8;--paper:#fff;--bg:#f3f6f7;--rail:#2674c8;--walk:#26966d;--ferry:#e17b35;--tram:#a47a20}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif}
+header{padding:18px 22px;background:#fff;border-bottom:1px solid var(--line)}h1{font-size:22px;margin:0 0 5px}.sub{font-size:13px;color:var(--muted)}
+main{max-width:1500px;margin:auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:14px}
+.mapwrap{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:650px;position:relative}
+#map{height:calc(100vh - 170px);min-height:650px;width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:12px 15px;border-top:1px solid var(--line);font-size:12px}
+.key{display:inline-flex;align-items:center;gap:6px}.swatch{width:22px;height:5px;border-radius:4px;display:inline-block}
+.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:15px;max-height:calc(100vh - 140px);overflow:auto}
+.panel h2{font-size:16px;margin:0 0 10px}.intro{font-size:12px;line-height:1.6;color:var(--muted);margin-bottom:12px}
+.segment{padding:11px 10px;border:1px solid var(--line);border-radius:10px;margin:8px 0;cursor:pointer;background:#fff}
+.segment.active{border-color:#397fb7;background:#f0f7fc}.seghead{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:13px}
+.segdesc{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.tag{font-size:10px;border-radius:20px;padding:3px 7px;background:#edf2f5;white-space:nowrap}
+button{border:1px solid var(--line);background:white;border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--ink);font:inherit;font-size:12px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 14px}
+.note{font-size:11px;color:#687983;line-height:1.55;border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.leaflet-popup-content{font-family:inherit;line-height:1.6}.pin{background:#173b56;color:#fff;border:2px solid #fff;border-radius:50%;width:27px;height:27px;text-align:center;line-height:23px;font-weight:700;box-shadow:0 1px 5px #0005}
+#status{font-size:11px;color:var(--muted);margin:8px 0}
+@media(max-width:900px){main{grid-template-columns:1fr}.panel{max-height:none;order:2}.mapwrap{min-height:470px}#map{height:62vh;min-height:470px}}
+</style></head>
+<body>
+<header><h1>香港一日游｜真实地图路线</h1><div class="sub">2026.11.14（周六） · 福田口岸／落马洲往返 · 以 OpenStreetMap 实际地理底图为基础</div></header>
+<main>
+<section class="mapwrap"><div id="map"></div><div class="legend">
+<span class="key"><i class="swatch" style="background:var(--rail)"></i>港铁（站间线路示意）</span>
+<span class="key"><i class="swatch" style="background:var(--walk)"></i>步行（道路路径）</span>
+<span class="key"><i class="swatch" style="background:var(--ferry)"></i>天星小轮（实际码头间航线）</span>
+<span class="key"><i class="swatch" style="background:var(--tram)"></i>山顶缆车（线路走廊）</span>
+</div></section>
+<aside class="panel">
+<h2>行程与路线控制</h2>
+<div class="intro">点击任一行程段，地图会定位并高亮该段路线。播放按钮会让位置指示点沿全程路线移动。地图道路底图来自 OpenStreetMap。</div>
+<div class="actions"><button id="play">▶ 播放全程动线</button><button id="pause">Ⅱ 暂停</button><button id="fit">显示全程</button></div>
+<div id="status">正在加载地图路线……</div>
+<div id="segments"></div>
+<div class="note">
+<b>路线准确性说明</b><br>
+• 步行段：通过 OpenStreetMap 路网计算路线；若路由服务暂不可用，会以地点间连线作为备用，并明确提示。<br>
+• 港铁段：按港铁实际线路及换乘站连接站点；线条用于表示线路走向，不是轨道测绘数据。去程：东铁线落马洲→金钟，换荃湾线至尖沙咀；返程：铜锣湾→金钟，换东铁线至落马洲。<br>
+• 天星小轮：尖沙咀码头至中环七号码头。<br>
+• 山顶缆车：花园道总站至山顶总站；显示为路线走廊示意。<br>
+• 计划时间为预估时间，须为过关、候车、排队和步行预留弹性。
+</div>
+</aside>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map',{scrollWheelZoom:true}).setView([22.305,114.17],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+const C={rail:'#2674c8',walk:'#26966d',ferry:'#e17b35',tram:'#a47a20'};
+const P={
+lok:[22.5141,114.0658],sheung:[22.5018,114.1278],fanling:[22.4922,114.1388],taiPo:[22.4445,114.1707],univ:[22.4131,114.2103],shaTin:[22.3824,114.1870],kowloonTong:[22.3378,114.1767],mongKokEast:[22.3233,114.1722],hungHom:[22.3027,114.1820],exhibition:[22.2822,114.1730],admiralty:[22.2796,114.1651],tstMtr:[22.2970,114.1722],clock:[22.29368,114.16936],prom:[22.2935,114.1715],avenue:[22.2931,114.1752],tstPier:[22.2930,114.1689],centralPier:[22.2870,114.1588],centralFront:[22.2865,114.1608],taiKwun:[22.2819,114.1505],tramLow:[22.2774,114.1590],tramTop:[22.2717,114.1547],peak:[22.2759,114.1455],centralMtr:[22.2817,114.1580],causewayMtr:[22.2800,114.1850],hysan:[22.2802,114.1849],fashion:[22.2815,114.1864],times:[22.2782,114.1819]
+};
+const places=[
+['落马洲站','09:30','港铁起点','lok'],['尖沙咀钟楼','10:30','拍照打卡','clock'],['尖沙咀海滨长廊','10:50','维港步行','prom'],['星光大道','11:10','拍照打卡','avenue'],['尖沙咀天星码头','11:30','天星小轮上船','tstPier'],['中环天星码头（七号码头）','12:00','天星小轮下船','centralPier'],['中环海滨','12:10','海滨观光','centralFront'],['大馆','13:00','历史人文','taiKwun'],['山顶缆车花园道总站','13:40','缆车上山','tramLow'],['太平山顶','14:15','重点景点','peak'],['山顶缆车山顶总站','15:30','缆车下山','tramTop'],['山顶缆车花园道总站','15:50','回到中环','tramLow'],['希慎广场','16:15','购物','hysan'],['Fashion Walk','17:10','购物','fashion'],['时代广场','18:00','购物／晚餐','times'],['铜锣湾站','19:00','港铁返程','causewayMtr'],['金钟站','19:10','换乘东铁线','admiralty'],['落马洲站','20:00+','过关返回深圳','lok']
+];
+const lineLayers=[],markers=[];
+function pin(n){return L.divIcon({className:'',html:'<div class="pin">'+n+'</div>',iconSize:[27,27],iconAnchor:[13,13]})}
+places.forEach((p,i)=>{const m=L.marker(P[p[3]],{icon:pin(i+1)}).bindPopup('<b>'+p[0]+'</b><br>'+p[1]+' · '+p[2]);m.addTo(map);markers.push(m)});
+function addLine(coords,color,weight=5,dash=null){const l=L.polyline(coords,{color,weight,opacity:.9,dashArray:dash||null,lineCap:'round',lineJoin:'round'}).addTo(map);lineLayers.push(l);return l}
+async function foot(a,b){
+ const url='https://routing.openstreetmap.de/routed-foot/route/v1/driving/'+P[a][1]+','+P[a][0]+';'+P[b][1]+','+P[b][0]+'?overview=full&geometries=geojson';
+ const r=await fetch(url);if(!r.ok)throw Error('foot routing '+r.status);const j=await r.json();if(!j.routes?.[0])throw Error('no route');return j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+}
+const segs=[
+ {title:'09:30–10:30｜落马洲 → 尖沙咀',mode:'港铁',desc:'东铁线：落马洲 → 金钟；金钟换荃湾线 → 尖沙咀。地图标出东铁线经停站与换乘站。',type:'rail',coords:['lok','sheung','fanling','taiPo','univ','shaTin','kowloonTong','mongKokEast','hungHom','exhibition','admiralty','tstMtr'].map(k=>P[k])},
+ {title:'10:30–11:30｜尖沙咀海滨步行',mode:'步行',desc:'尖沙咀钟楼 → 海滨长廊 → 星光大道 → 尖沙咀天星码头。',type:'walk',pairs:[['clock','prom'],['prom','avenue'],['avenue','tstPier']]},
+ {title:'11:30–12:00｜天星小轮过海',mode:'天星小轮',desc:'尖沙咀天星码头 → 中环七号码头。航程约9分钟，另预留候船时间。',type:'ferry',coords:[P.tstPier,P.centralPier]},
+ {title:'12:00–13:40｜中环海滨 → 大馆 → 花园道',mode:'步行',desc:'中环码头 → 中环海滨 → 大馆 → 山顶缆车花园道总站。',type:'walk',pairs:[['centralPier','centralFront'],['centralFront','taiKwun'],['taiKwun','tramLow']]},
+ {title:'13:40–15:50｜山顶缆车往返',mode:'山顶缆车',desc:'花园道总站 → 山顶总站／太平山顶；游览后乘缆车返回花园道总站。线路走廊示意。',type:'tram',coords:[P.tramLow,[22.2767,114.1578],[22.2758,114.1564],[22.2748,114.1555],P.tramTop,P.peak,P.tramTop,[22.2748,114.1555],[22.2758,114.1564],[22.2767,114.1578],P.tramLow]},
+ {title:'15:50–16:15｜中环 → 铜锣湾',mode:'港铁',desc:'步行至中环站，乘港岛线至铜锣湾站；再步行至希慎广场。',type:'rail',coords:[P.tramLow,P.centralMtr,[22.2818,114.1640],P.admiralty,[22.2788,114.1730],[22.2795,114.1800],P.causewayMtr]},
+ {title:'16:15–19:00｜铜锣湾购物步行',mode:'步行',desc:'希慎广场 → Fashion Walk → 时代广场 → 铜锣湾站。',type:'walk',pairs:[['hysan','fashion'],['fashion','times'],['times','causewayMtr']]},
+ {title:'19:00–20:00+｜铜锣湾 → 落马洲 → 深圳',mode:'港铁',desc:'港岛线：铜锣湾 → 金钟；换东铁线：金钟 → 落马洲。抵达后办理香港出境及深圳入境手续。',type:'rail',coords:[P.causewayMtr,[22.2790,114.1790],[22.2788,114.1730],P.admiralty,P.exhibition,P.hungHom,P.mongKokEast,P.kowloonTong,P.shaTin,P.univ,P.taiPo,P.fanling,P.sheung,P.lok]}
+];
+let current=null,walkingLines=[],animation=null,traveller=null;
+async function renderSegments(){
+ const box=document.getElementById('segments');
+ box.innerHTML=segs.map((s,i)=>'<div class="segment" data-i="'+i+'"><div class="seghead"><span>'+(i+1)+'. '+s.title+'</span><span class="tag">'+s.mode+'</span></div><div class="segdesc">'+s.desc+'</div></div>').join('');
+ box.querySelectorAll('.segment').forEach(el=>el.onclick=()=>showSegment(+el.dataset.i));
+ for(let i=0;i<segs.length;i++){
+  const s=segs[i]; if(s.type==='walk'){
+   for(const [a,b] of s.pairs){try{const coords=await foot(a,b);s._routes??=[];s._routes.push(coords);addLine(coords,C.walk,5)}catch(e){s._routes??=[];s._routes.push([P[a],P[b]]);addLine([P[a],P[b]],C.walk,4,'7 7');document.getElementById('status').textContent='部分步行路段暂无法调用路由服务，虚线为地点间备用连线。'}}
+  } else if(s.type==='rail'){addLine(s.coords,C.rail,5,'10 5')}
+  else if(s.type==='ferry'){addLine(s.coords,C.ferry,5)}
+  else if(s.type==='tram'){addLine(s.coords,C.tram,5,'3 5')}
+ }
+ document.getElementById('status').textContent='地图与路线已加载。步行路径优先使用 OSM 路网；港铁及缆车按线路走向展示。';
+}
+function showSegment(i){
+ current=i;document.querySelectorAll('.segment').forEach((e,j)=>e.classList.toggle('active',j===i));
+ const s=segs[i];const all=s.type==='walk'?(s._routes||[]).flat():s.coords;
+ if(all.length)map.fitBounds(L.latLngBounds(all).pad(.25));
+}
+function fit(){const pts=Object.values(P);map.fitBounds(L.latLngBounds(pts).pad(.08))}
+document.getElementById('fit').onclick=fit;
+document.getElementById('pause').onclick=()=>{if(animation)clearInterval(animation);animation=null};
+document.getElementById('play').onclick=()=>{
+ if(animation)clearInterval(animation);
+ const route=[];segs.forEach(s=>{if(s.type==='walk')(s._routes||[]).forEach(r=>route.push(...r));else route.push(...s.coords)});
+ if(!route.length)return;
+ if(traveller)map.removeLayer(traveller);
+ traveller=L.circleMarker(route[0],{radius:9,color:'#fff',weight:3,fillColor:'#e54848',fillOpacity:1}).addTo(map);
+ let i=0;animation=setInterval(()=>{i++;if(i>=route.length){clearInterval(animation);animation=null;return}traveller.setLatLng(route[i]);},100);
+};
+renderSegments();fit();
+</script></body></html>
